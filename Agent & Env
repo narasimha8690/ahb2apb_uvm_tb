@@ -1,0 +1,43 @@
+// ahb_agent.sv
+class ahb_agent extends uvm_agent;
+  `uvm_component_utils(ahb_agent)
+  ahb_sequencer sqr; ahb_driver drv; ahb_monitor mon;
+  function new(string name, uvm_component parent); super.new(name,parent); endfunction
+  function void build_phase(uvm_phase phase);
+    sqr = ahb_sequencer::type_id::create("sqr", this);
+    drv = ahb_driver   ::type_id::create("drv", this);
+    mon = ahb_monitor  ::type_id::create("mon", this);
+  endfunction
+  function void connect_phase(uvm_phase phase);
+    drv.seq_item_port.connect(sqr.seq_item_export);
+  endfunction
+endclass
+
+// apb_agent.sv (monitor-only for DUT output observation)
+class apb_agent extends uvm_agent;
+  `uvm_component_utils(apb_agent)
+  apb_monitor mon;
+  function new(string name, uvm_component parent); super.new(name,parent); endfunction
+  function void build_phase(uvm_phase phase);
+    mon = apb_monitor::type_id::create("mon", this);
+  endfunction
+endclass
+// ahb2apb_env.sv
+class ahb2apb_env extends uvm_env;
+  `uvm_component_utils(ahb2apb_env)
+  ahb_agent a_ahb;
+  apb_agent a_apb;
+  ahb2apb_scoreboard sb;
+
+  function new(string name, uvm_component parent); super.new(name,parent); endfunction
+  function void build_phase(uvm_phase phase);
+    a_ahb = ahb_agent::type_id::create("a_ahb", this);
+    a_apb = apb_agent::type_id::create("a_apb", this);
+    sb    = ahb2apb_scoreboard::type_id::create("sb", this);
+  endfunction
+
+  function void connect_phase(uvm_phase phase);
+    a_ahb.mon.aport.connect(sb.ahb_s.analysis_export);
+    a_apb.mon.aport.connect(sb.apb_s.analysis_export);
+  endfunction
+endclass
