@@ -1,0 +1,40 @@
+1. Interface
+
+// ahb_if.sv
+interface ahb_if (input logic HCLK, input logic HRESETn);
+  logic [31:0] HADDR;
+  logic  [1:0] HTRANS;   // 00=IDLE, 10=NONSEQ
+  logic        HWRITE;
+  logic  [2:0] HSIZE;    // 010=32-bit
+  logic  [2:0] HBURST;   // 000=single
+  logic [31:0] HWDATA;
+  logic [31:0] HRDATA;
+  logic        HREADY;   // from slave/bridge
+  logic        HREADYOUT;// from bridge to master (alias HREADY)
+  logic  [1:0] HRESP;
+
+  // convenience modports
+  modport mst (output HADDR, HTRANS, HWRITE, HSIZE, HBURST, HWDATA,
+               input  HRDATA, HREADY, HRESP);
+  modport mon (input  HADDR, HTRANS, HWRITE, HSIZE, HBURST, HWDATA,
+               input  HRDATA, HREADY, HRESP);
+endinterface
+
+//apb_if.sv
+
+// apb_if.sv
+interface apb_if (input logic PCLK, input logic PRESETn);
+  logic [31:0] PADDR;
+  logic        PWRITE;
+  logic        PSEL;
+  logic        PENABLE;
+  logic [31:0] PWDATA;
+  logic [31:0] PRDATA;
+  logic        PREADY;
+  logic        PSLVERR;
+
+  modport slv (input  PADDR, PWRITE, PSEL, PENABLE, PWDATA,
+               output PRDATA, PREADY, PSLVERR);
+  modport mon (input  PADDR, PWRITE, PSEL, PENABLE, PWDATA, PRDATA, PREADY, PSLVERR);
+endinterface
+
