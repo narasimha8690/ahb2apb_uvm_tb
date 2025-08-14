@@ -1,0 +1,19 @@
+// ahb_txn.sv
+class ahb_txn extends uvm_sequence_item;
+  rand bit [31:0] addr;
+  rand bit        write;
+  rand bit [2:0]  size;      // 3'b010 for 32-bit
+  rand bit [31:0] wdata;
+       bit [31:0] rdata;
+       bit  [1:0] resp;      // 0=OKAY, 1=ERROR (packed)
+  constraint c_defaults { size == 3'b010; } // 32-bit
+  `uvm_object_utils_begin(ahb_txn)
+    `uvm_field_int(addr, UVM_ALL_ON)
+    `uvm_field_int(write,UVM_ALL_ON)
+    `uvm_field_int(size, UVM_ALL_ON)
+    `uvm_field_int(wdata,UVM_ALL_ON)
+    `uvm_field_int(rdata,UVM_NOPRINT)
+    `uvm_field_int(resp, UVM_NOPRINT)
+  `uvm_object_utils_end
+  function new(string name="ahb_txn"); super.new(name); endfunction
+endclass
