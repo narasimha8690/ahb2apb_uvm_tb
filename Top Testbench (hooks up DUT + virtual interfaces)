@@ -1,0 +1,58 @@
+// tb_top.sv
+`timescale 1ns/1ps
+module tb_top;
+
+  logic HCLK=0, HRESETn=0;
+  logic PCLK=0, PRESETn=0;
+
+  // Clocks
+  always #5  HCLK = ~HCLK;   // 100MHz
+  always #10 PCLK = ~PCLK;   // 50MHz
+
+  // Resets
+  initial begin
+    HRESETn = 0; PRESETn = 0;
+    repeat(5) @(posedge HCLK);  HRESETn = 1;
+    repeat(5) @(posedge PCLK);  PRESETn = 1;
+  end
+
+  // Interfaces
+  ahb_if ahb(HCLK, HRESETn);
+  apb_if apb(PCLK, PRESETn);
+
+  // DUT (adjust port names to your RTL)
+  // Example:
+  // ahb2apb_bridge dut (
+  //   .HCLK(HCLK), .HRESETn(HRESETn),
+  //   .HADDR(ahb.HADDR), .HTRANS(ahb.HTRANS), .HWRITE(ahb.HWRITE),
+  //   .HSIZE(ahb.HSIZE), .HBURST(ahb.HBURST), .HWDATA(ahb.HWDATA),
+  //   .HRDATA(ahb.HRDATA), .HREADY(ahb.HREADY), .HRESP(ahb.HRESP),
+  //   .PCLK(PCLK), .PRESETn(PRESETn),
+  //   .PADDR(apb.PADDR), .PWRITE(apb.PWRITE), .PSEL(apb.PSEL),
+  //   .PENABLE(apb.PENABLE), .PWDATA(apb.PWDATA),
+  //   .PRDATA(apb.PRDATA), .PREADY(apb.PREADY), .PSLVERR(apb.PSLVERR)
+  // );
+
+  // Simple APB memory model (respond OK, store 32-bit words)
+  logic [31:0] mem [0:1023];
+  // Drive PREADY/PRDATA/PSLVERR
+  assign apb.PREADY  = apb.PSEL ? 1'b1 : 1'b0;
+  assign apb.PSLVERR = 1'b0;
+  always @(posedge PCLK or negedge PRESETn) begin
+    if (!PRESETn) begin
+      // init if needed
+    end else if (apb.PSEL && apb.PENABLE && apb.PREADY) begin
+      if (apb.PWRITE) mem[apb.PADDR[11:2]] <= apb.PWDATA;
+      else            apb.PRDATA <= mem[apb.PADDR[11:2]];
+    end
+  end
+
+  // UVM config for virtual interfaces
+  initial begin
+    uvm_config_db#(virtual ahb_if)::set(null, "uvm_test_top.env.a_ahb.*", "vif", ahb);
+    uvm_config_db#(virtual ahb_if)::set(null, "uvm_test_top.env.a_ahb.mon", "vif", ahb);
+    uvm_config_db#(virtual apb_if)::set(null, "uvm_test_top.env.a_apb.mon", "vif", apb);
+    run_test("ahb2apb_test");
+  end
+
+endmodule
