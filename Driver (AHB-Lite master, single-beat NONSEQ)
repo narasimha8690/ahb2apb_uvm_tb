@@ -1,0 +1,48 @@
+// ahb_driver.sv
+class ahb_driver extends uvm_driver#(ahb_txn);
+  `uvm_component_utils(ahb_driver)
+  virtual ahb_if mst_vif;
+
+  function new(string name, uvm_component parent); super.new(name,parent); endfunction
+  function void build_phase(uvm_phase phase);
+    if(!uvm_config_db#(virtual ahb_if)::get(this, "", "vif", mst_vif))
+      `uvm_fatal(get_type_name(),"No AHB vif")
+  endfunction
+
+  task run_phase(uvm_phase phase);
+    ahb_txn tr;
+    // idle defaults
+    mst_vif.HTRANS <= 2'b00; // IDLE
+    mst_vif.HWRITE <= 1'b0;
+    mst_vif.HSIZE  <= 3'b010;
+    mst_vif.HBURST <= 3'b000;
+    mst_vif.HADDR  <= '0;
+    mst_vif.HWDATA <= '0;
+
+    forever begin
+      seq_item_port.get_next_item(tr);
+
+      // Address Phase
+      @(posedge mst_vif.HCLK iff mst_vif.HRESETn);
+      mst_vif.HADDR  <= tr.addr;
+      mst_vif.HWRITE <= tr.write;
+      mst_vif.HSIZE  <= tr.size;
+      mst_vif.HTRANS <= 2'b10; // NONSEQ
+
+      // Data Phase (single-beat)
+      @(posedge mst_vif.HCLK);
+      if (tr.write) mst_vif.HWDATA <= tr.wdata;
+
+      // Wait for ready and capture response/HRDATA
+      do @(posedge mst_vif.HCLK); while (!mst_vif.HREADY);
+      tr.resp  = mst_vif.HRESP;
+      if (!tr.write) tr.rdata = mst_vif.HRDATA;
+
+      // Return to IDLE
+      @(posedge mst_vif.HCLK);
+      mst_vif.HTRANS <= 2'b00;
+
+      seq_item_port.item_done();
+    end
+  endtask
+endclass
