@@ -17,3 +17,19 @@ class ahb_txn extends uvm_sequence_item;
   `uvm_object_utils_end
   function new(string name="ahb_txn"); super.new(name); endfunction
 endclass
+// apb_txn.sv
+class apb_txn extends uvm_sequence_item;
+  bit [31:0] addr;
+  bit        write;
+  bit [31:0] wdata;
+  bit [31:0] rdata;
+  bit        slverr;
+  `uvm_object_utils_begin(apb_txn)
+    `uvm_field_int(addr, UVM_ALL_ON)
+    `uvm_field_int(write,UVM_ALL_ON)
+    `uvm_field_int(wdata,UVM_ALL_ON)
+    `uvm_field_int(rdata,UVM_NOPRINT)
+    `uvm_field_int(slverr,UVM_ALL_ON)
+  `uvm_object_utils_end
+  function new(string name="apb_txn"); super.new(name); endfunction
+endclass
