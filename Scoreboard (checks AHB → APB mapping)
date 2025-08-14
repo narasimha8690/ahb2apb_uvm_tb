@@ -1,0 +1,63 @@
+// ahb2apb_scoreboard.sv
+class ahb2apb_scoreboard extends uvm_component;
+  `uvm_component_utils(ahb2apb_scoreboard)
+
+  uvm_analysis_export#(ahb_txn) ahb_exp;
+  uvm_analysis_export#(apb_txn) apb_exp;
+
+  // simple FIFOs to match requests/observations
+  mailbox #(ahb_txn) ahb_mb = new();
+  mailbox #(apb_txn) apb_mb = new();
+
+  function new(string name, uvm_component parent); super.new(name,parent); endfunction
+
+  // Subscribers
+  class ahb_sub extends uvm_subscriber#(ahb_txn);
+    ahb2apb_scoreboard sb;
+    function new(string name, uvm_component parent, ahb2apb_scoreboard sb);
+      super.new(name,parent); this.sb = sb; endfunction
+    virtual function void write(ahb_txn t); sb.ahb_mb.put(t); endfunction
+  endclass
+
+  class apb_sub extends uvm_subscriber#(apb_txn);
+    ahb2apb_scoreboard sb;
+    function new(string name, uvm_component parent, ahb2apb_scoreboard sb);
+      super.new(name,parent); this.sb = sb; endfunction
+    virtual function void write(apb_txn t); sb.apb_mb.put(t); endfunction
+  endclass
+
+  ahb_sub ahb_s;
+  apb_sub apb_s;
+
+  function void build_phase(uvm_phase phase);
+    ahb_s = new("ahb_s", this, this);
+    apb_s = new("apb_s", this, this);
+  endfunction
+
+  task run_phase(uvm_phase phase);
+    ahb_txn a; apb_txn p;
+    forever begin
+      ahb_mb.get(a);
+      apb_mb.get(p);
+
+      // Basic checks: address/write match
+      if (a.addr !== p.addr)
+        `uvm_error("SB", $sformatf("ADDR mismatch AHB=%h APB=%h", a.addr, p.addr))
+      if (a.write !== p.write)
+        `uvm_error("SB", $sformatf("WRITE mismatch AHB=%0d APB=%0d", a.write, p.write))
+
+      if (a.write) begin
+        if (p.wdata !== a.wdata)
+          `uvm_error("SB", $sformatf("WDATA mismatch AHB=%h APB=%h", a.wdata, p.wdata))
+      end else begin
+        // For reads, bridge returns data on AHB from APB PRDATA
+        // Here we only check APB captured rdata is non-X; DUT data path checked in monitors/driver capture
+        if (^p.rdata === 1'bX)
+          `uvm_warning("SB","APB read data contains X")
+      end
+
+      if (a.resp == 2'b01 && !p.slverr)
+        `uvm_warning("SB","AHB ERROR but APB PSLVERR low (check DUT policy)")
+    end
+  endtask
+endclass
