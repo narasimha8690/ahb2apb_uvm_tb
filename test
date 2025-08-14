@@ -1,0 +1,18 @@
+// ahb2apb_test.sv
+class ahb2apb_test extends uvm_test;
+  `uvm_component_utils(ahb2apb_test)
+  ahb2apb_env env;
+
+  function new(string name, uvm_component parent); super.new(name,parent); endfunction
+  function void build_phase(uvm_phase phase);
+    env = ahb2apb_env::type_id::create("env", this);
+  endfunction
+
+  task run_phase(uvm_phase phase);
+    phase.raise_objection(this);
+      seq_single_write_read seq = seq_single_write_read::type_id::create("seq");
+      seq.start(env.a_ahb.sqr);
+      // Add more sequences or a virtual sequence for more coverage
+    phase.drop_objection(this);
+  endtask
+endclass
