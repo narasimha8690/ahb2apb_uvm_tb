@@ -1,0 +1,25 @@
+// ahb_sequencer.sv
+class ahb_sequencer extends uvm_sequencer#(ahb_txn);
+  `uvm_component_utils(ahb_sequencer)
+  function new(string name, uvm_component parent); super.new(name,parent); endfunction
+endclass
+
+// seq_basic.sv
+class seq_single_write_read extends uvm_sequence#(ahb_txn);
+  `uvm_object_utils(seq_single_write_read)
+  function new(string name="seq_single_write_read"); super.new(name); endfunction
+
+  task body();
+    ahb_txn t;
+
+    // WRITE
+    t = ahb_txn::type_id::create("t_write");
+    assert(t.randomize() with { write==1; addr inside {[32'h0000_0000:32'h0000_0FFF]}; wdata==32'hA5A5_5A5A; });
+    start_item(t); finish_item(t);
+
+    // READ (same addr)
+    t = ahb_txn::type_id::create("t_read");
+    t.write = 0; t.addr = t.addr; // reuse same
+    start_item(t); finish_item(t);
+  endtask
+endclass
